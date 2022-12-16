@@ -40,7 +40,7 @@ def solutions() -> Iterator[int]:
             else:
                 fixed_sand.add(moving_sand.pop(-1))
                 cave_data[ys,xs]=7
-                if len(fixed_sand)%500==0:
+                if len(fixed_sand)%200==0:
                     cave.set_data(cave_data)
                     plt.pause(0.05)
                 break
