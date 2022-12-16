@@ -8,7 +8,7 @@ def priorities(item_type:str):
     code = ord(item_type)
     return code-96 if code>96 else code-38
 
-with open("input03.txt") as file:
+with open("2022/input03.txt") as file:
     data = [common_char(line.strip()) for line in file]
         
 result = sum(map(priorities,data))

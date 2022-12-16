@@ -1,6 +1,8 @@
 from time import perf_counter
 
-def show_answers(solutions):
+from typing import Iterator
+
+def show_answers(solutions:Iterator) -> None:
     t0 = perf_counter()
     for i, answer in enumerate(solutions, start=1):
         print(f"Answer {i}:\n{answer}\n")
