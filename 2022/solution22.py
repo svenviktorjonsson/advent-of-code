@@ -30,7 +30,7 @@ def follow_commands(z,dz,commands,data,wormholes = {}):
         dzs.append(dz)
         nz = z+dz
         if nz in wormholes:
-            nz,f,_ = wormholes[nz]
+            nz,f = wormholes[nz]
             dz*=f
         else:
             nz = int(nz.real)%height+(int(nz.imag)%width)*1j
@@ -45,48 +45,25 @@ def follow_commands(z,dz,commands,data,wormholes = {}):
         dz *= -1j if rot=="R" else 1j
     return last_valid_z,dz,commands,zs,dzs,rot
 
-def solutions() -> Iterator[int]:
-    data,commands = get_puzzle_input(year=2022, day=22, example=False, as_lines=False).split("\n\n")
-    data = data.split("\n")
-    width = max(map(len,data))
-    cmds = commands.strip()+"E"
-    data = np.array([list(w:=line)+[" "]*(width-len(w)) for line in data]).view(CArray)
-    z = next(i for i,c in enumerate(data[0]) if c==".")*1j
-    dz = 1j
-    while cmds:
-        z, dz, cmds, zs,dzs,rot = follow_commands(z, dz, cmds, data)
-
-    face = int(1-2*cmath.phase(dz)/cmath.pi)%4
-    yield int(1000*(z.real+1)+4*(z.imag+1)+face)
-
+def find_connections(data,disp_data):
     atfoup = (-1,-1,-1),(0,1,0),(0,0,1)
     side = int(np.sqrt(np.sum(data!=" ")/6))
-    data = np.pad(data,1,mode = "constant", constant_values = " ").view(CArray)
-    disp_data=data.copy()
     z = next(i for i,c in enumerate(data[1]) if c==".")*1j
     dz = 1j
     corners = {}
     wormholes = {}
-    indices = []
-    imax = ord("A")
     for _ in range(14):
         at,forward,up = np.array(atfoup)
         zs = z+np.arange(side)*dz
-        next_ = tuple(at+2*forward)
-        if (key:=(tuple(at),next_)) in corners:
-            zs0, dz0, inds0 = corners[key]
-            inds = indices[-side:][::-1]
-            indices = indices[:-side]
-            wormholes.update({z0:(z1-dz*1j,-dz/dz0,f"{chr(i0)}->{chr(i1)}") for z0,z1,i0,i1 in zip(zs0[::-1],zs,inds0[::-1],inds)})
-            wormholes.update({z1:(z0-dz0*1j,-dz0/dz,f"{chr(i0)}->{chr(i1)}") for z0,z1,i0,i1 in zip(zs0[::-1],zs,inds0[::-1],inds)})
-            
+        key = tuple(at),tuple(at+2*forward)
+        if key in corners:
+            zs0, dz0 = corners[key]
+            for z0,z1 in zip(zs0[::-1],zs):
+                wormholes[z0] = z1-dz*1j,-dz/dz0
+                wormholes[z1] = z0-dz0*1j,-dz0/dz
         else:
-            indices.extend(inds:=imax+np.arange(side))
-            imax+=side
-            corners[key[::-1]] = zs, dz, inds
-            
-        # chrs = [chr(i) for i in inds]
-        # disp_data[zs]=chrs
+            corners[key[::-1]] = zs, dz
+
         turn_right = data[z+(side-1j)*dz] == " "
         go_forward = data[z+side*dz] == " "
         at += 2*forward
@@ -104,13 +81,29 @@ def solutions() -> Iterator[int]:
             z += (side-1)*dz
             dz *= 1j
         atfoup = at,forward,up
+    return wormholes
+
+def solutions() -> Iterator[int]:
+    data,commands = get_puzzle_input(year=2022, day=22, example=True, as_lines=False).split("\n\n")
+    data = data.split("\n")
+    width = max(map(len,data))
+    cmds = commands.strip()+"E"
+    data = np.array([list(w:=line)+[" "]*(width-len(w)) for line in data]).view(CArray)
+    z = next(i for i,c in enumerate(data[0]) if c==".")*1j
+    dz = 1j
+    while cmds:
+        z, dz, cmds, zs,dzs,rot = follow_commands(z, dz, cmds, data)
+
+    face = int(1-2*cmath.phase(dz)/cmath.pi)%4
+    yield int(1000*(z.real+1)+4*(z.imag+1)+face)
+    
+    data = np.pad(data,1,mode = "constant", constant_values = " ").view(CArray)
+    disp_data = data.copy()
+    wormholes = find_connections(data, disp_data)
 
     cmds = commands.strip()+"E"
     z = 1+next(i for i,c in enumerate(data[1]) if c==".")*1j
     dz = 1j
-    # display(disp_data)
-    # for k,v in wormholes.items():
-    #     print(k, *v)
     disp_data[z] = "S"
     while cmds:
         face = int(1-2*cmath.phase(dz)/cmath.pi)%4
